@@ -1,105 +1,119 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Voice Recognition Chatbot</title>
+    <meta charset="utf-8" />
+    <title>Voice Chatbot</title>
   </head>
   <body>
-    <h1>Voice Recognition Chatbot</h1>
+    <div id="root"></div>
 
-    <div id="chat"></div>
+    <!-- Include React and ReactDOM -->
+    <!-- Add React, ReactDOM, and Babel scripts -->
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6.26.0/babel.min.js"></script>
 
-    <button onclick="startListening()">Start Listening</button>
-    <button onclick="stopListening()">Stop Listening</button>
+    <!-- Your React component code (VoiceChatbot) -->
+    <script type="text/babel">
+      const { useState, useEffect } = React;
 
-    <script>
-      const chatDiv = document.getElementById("chat");
-      let recognition;
-      let synth = window.speechSynthesis;
+      const VoiceChatbot = () => {
+        const [userInput, setUserInput] = useState("");
+        const [botResponse, setBotResponse] = useState("");
+        let recognition;
 
-      window.onload = function () {
-        if (window.SpeechRecognition || window.webkitSpeechRecognition) {
-          // Check if permission is already granted or previously denied
-          const permissionStatus = localStorage.getItem("microphonePermission");
-          if (permissionStatus === "granted") {
-            console.log("Microphone permission already granted!");
-            recognition = new (window.SpeechRecognition ||
-              window.webkitSpeechRecognition)();
-            recognition.lang = "en-US";
-          } else if (permissionStatus !== "denied") {
-            requestMicrophonePermission();
+        useEffect(() => {
+          recognition = new webkitSpeechRecognition();
+          recognition.continuous = false;
+          recognition.interimResults = false;
+
+          recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            setUserInput(transcript);
+            sendToChatbot(transcript);
+          };
+
+          recognition.onend = () => {
+            recognition.start();
+          };
+
+          recognition.start();
+
+          return () => {
+            recognition.stop();
+          };
+        }, []); // Empty dependency array ensures this runs only once
+
+        const handleUserInput = (event) => {
+          setUserInput(event.target.value);
+        };
+
+        const handleKeyPress = (event) => {
+          if (event.key === "Enter") {
+            sendToChatbot(userInput);
           }
-        } else {
-          alert(
-            "Speech recognition is not supported on this browser. Please use a supported browser."
-          );
-        }
+        };
+
+        const sendToChatbot = async (message) => {
+          // Replace 'YOUR_CHATBOT_API' with your actual chatbot API
+          const chatbotAPI = "YOUR_CHATBOT_API";
+
+          try {
+            fetch(
+              `https://api.jugalbandi.ai/query-with-langchain-gpt4?query_string=${message}&uuid_number=5f0f570c-a949-11ee-89c9-42004e494300`
+            )
+              .then((response) => {
+                if (!response.ok) {
+                  throw new Error(errorMessage);
+                }
+                return response.json();
+              })
+              .then((response) => {
+                // console.log("res", response);
+                setBotResponse(
+                  response.answer || "Sorry, I couldn't understand that."
+                );
+              })
+              .catch((e) => {
+                //setBotResponse(e.message, isLoading);
+                console.log(e.message);
+              })
+              .finally(() => {
+               // setLoading(false);
+              });
+          } catch (error) {
+            console.error("Error fetching response from the chatbot:", error);
+          }
+        };
+
+        return (
+          <div>
+            <h1>Voice Chatbot</h1>
+            <div>
+              <input
+                type="text"
+                value={userInput}
+                onChange={handleUserInput}
+                onKeyPress={handleKeyPress}
+                placeholder="Type or speak your message..."
+              />
+            </div>
+            <div>
+              <strong>User:</strong> {userInput}
+            </div>
+            <div>
+              <strong>Bot:</strong> {botResponse}
+            </div>
+          </div>
+        );
       };
 
-      function checkMicrophonePermission() {
-        navigator.permissions
-          .query({ name: "microphone" })
-          .then((permissionStatus) => {
-            if (permissionStatus.state === "granted") {
-              console.log("Microphone permission already granted!");
-            } else {
-              requestMicrophonePermission();
-            }
-          });
-      }
-
-      function requestMicrophonePermission() {
-        navigator.mediaDevices
-          .getUserMedia({ audio: true })
-          .then((stream) => {
-            console.log("Microphone permission granted!");
-            localStorage.setItem("microphonePermission", "granted");
-            stream.getTracks().forEach((track) => track.stop());
-          })
-          .catch((error) => {
-            localStorage.setItem("microphonePermission", "denied");
-            alert(
-              "Microphone permission denied. Speech recognition will not work."
-            );
-          });
-      }
-
-      function startListening() {
-        if (recognition) {
-          recognition.onresult = function (event) {
-            const transcript = event.results[0][0].transcript;
-            displayMessage(transcript);
-            respondToUser(transcript);
-          };
-          recognition.start();
-        }
-      }
-
-      function stopListening() {
-        if (recognition) {
-          recognition.stop();
-        }
-      }
-
-      function displayMessage(message) {
-        const messageDiv = document.createElement("div");
-        messageDiv.textContent = `You: ${message}`;
-        chatDiv.appendChild(messageDiv);
-      }
-
-      function respondToUser(message) {
-        // Add your logic to generate a response based on the user's input
-        // For simplicity, let's just repeat the user's message
-        const response = `Bot: You said "${message}"`;
-        displayMessage(response);
-        speak(response);
-      }
-
-      function speak(text) {
-        const utterance = new SpeechSynthesisUtterance(text);
-        synth.speak(utterance);
-      }
+      ReactDOM.render(
+        <React.StrictMode>
+          <VoiceChatbot />
+        </React.StrictMode>,
+        document.getElementById("root")
+      );
     </script>
   </body>
 </html>
